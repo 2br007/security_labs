@@ -1,0 +1,49 @@
+name: Security Lab CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff bandit semgrep
+
+      - name: Lint with Ruff
+        run: ruff check .
+
+      - name: Bandit scan
+        run: bandit -r app --exclude app/api/vulnerable -ll
+
+      - name: Semgrep scan
+        run: semgrep --config=auto app
+
+      - name: Set env
+        run: |
+            echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" >> $GITHUB_ENV
+            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> $GITHUB_ENV
+            echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> $GITHUB_ENV
+            echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> $GITHUB_ENV
+
+      - name: Start stack
+        run: docker compose up -d --build
+
+      - name: Run tests
+        run: docker compose exec app pytest -q
+
+      - name: Shutdown
+        run: docker compose down -v
