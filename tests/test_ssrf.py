@@ -1,20 +1,16 @@
-from fastapi.testclient import TestClient
-
-from app.main import app
-
-client = TestClient(app)
+from unittest.mock import AsyncMock
 
 
-def test_ssrf_vulnerability() -> None:
-    """
-    Ensure internal service can be accessed via SSRF.
-    """
+def test_ssrf_vulnerability(client, mock_httpx):
+    mock_response = AsyncMock()
+    mock_response.status_code = 200
+    mock_response.text = '{"SUPER_SECRET_KEY": "123"}'
+
+    mock_httpx.get = AsyncMock(return_value=mock_response)
+
     response = client.get(
         "/vulnerable/ssrf/fetch",
-        params={"url": "http://localhost:8000/internal/metadata"},
+        params={"url": "http://internal/metadata"},
     )
 
-    assert response.status_code == 200
-    data = response.json()
-
-    assert "SUPER_SECRET_KEY" in data["content"]
+    assert "SUPER_SECRET_KEY" in response.json()["content"]

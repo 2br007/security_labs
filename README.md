@@ -23,6 +23,7 @@ This repository is designed to:
 - Python 3.11
 - FastAPI
 - PostgreSQL
+- JWT
 - SQLAlchemy
 - Docker / Docker Compose
 - Pytest
@@ -59,9 +60,18 @@ Each vulnerability includes:
 ### 1. Broken Object Level Authorization (BOLA / IDOR)
 - Access other users' data by modifying IDs
 
+First - authorize as one user:
+
 ```bash
-curl -H "X-User-ID: 1" \
-http://localhost:8000/vulnerable/users/2
+curl -X POST "http://localhost:8000/auth/login?username=alice"
+# you will get token:
+{"access_token":"sometokenwillbehere","token_type":"bearer"}
+```
+
+Next try to get your data and after that try to get another user data:
+
+```bash
+curl "http://localhost:8000/secure/users/2" -H "Authorization: Bearer sometokenwillbehere"
 ```
 
 Expected result (vulnerable behavior)
@@ -78,7 +88,7 @@ Expected result (vulnerable behavior)
 
 
 ```bash
-curl -H "X-User-ID: 1" \
+curl -H "Authorization: Bearer sometokenwillbehere" \
 http://localhost:8000/secure/users/2
 {"detail":"Not authorized to access this resource"}
 ```

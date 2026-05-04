@@ -2,6 +2,7 @@ from typing import Dict
 
 from fastapi import FastAPI
 
+from app.api import auth
 from app.api.internal import metadata as internal_metadata
 from app.api.secure import auth as secure_auth
 from app.api.secure import path_traversal as secure_path
@@ -18,6 +19,9 @@ from app.db.seed import seed_users
 from app.db.session import SessionLocal, engine
 
 app = FastAPI(title="FastAPI Security Lab")
+
+app.include_router(auth.router)
+
 # BOLA:
 app.include_router(vulnerable_users.router)
 app.include_router(secure_users.router)

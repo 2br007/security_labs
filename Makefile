@@ -3,10 +3,10 @@ lab:
 	docker-compose up --build -d
 
 down:
-	docker-compose down
+	docker-compose down -v
 
 test:
-	docker-compose exec app pytest -q
+	docker-compose run --rm app pytest -q
 
 install:
 	pip install -r requirements.txt

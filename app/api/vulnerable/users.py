@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.schemas import UserResponse
-from app.core.security import get_current_user_id
 from app.db.models import User
 from app.db.session import get_db
 
@@ -13,7 +12,6 @@ router = APIRouter(prefix="/vulnerable/users", tags=["vulnerable"])
 def get_user_vulnerable(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user_id),
 ) -> User:
     """
     [VULNERABLE] Broken Object Level Authorization (BOLA)

@@ -1,21 +1,18 @@
-from fastapi.testclient import TestClient
-
-from app.main import app
-
-client = TestClient(app)
-
-
-def test_bola_vulnerability() -> None:
+def test_bola_vulnerability(client, create_user):
     """
     Ensure that a user can access another user's data (BOLA).
     """
+
+    user1 = create_user("alice")
+    user2 = create_user("bob")
+
     response = client.get(
-        "/vulnerable/users/2",
-        headers={"X-User-ID": "1"},
+        f"/vulnerable/users/{user2.id}",
+        headers={"X-User-ID": str(user1.id)},
     )
 
     assert response.status_code == 200
     data = response.json()
 
-    assert data["id"] == 2
+    assert data["id"] == user2.id
     assert data["username"] == "bob"

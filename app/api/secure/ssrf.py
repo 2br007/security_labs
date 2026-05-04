@@ -1,54 +1,66 @@
+import ipaddress
+import socket
 from typing import Any
 from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, HTTPException
 
+ALLOWED_HOSTS = {"example.com", "api.github.com"}
+
 router = APIRouter(prefix="/secure/ssrf", tags=["secure"])
 
-ALLOWED_HOSTS = ("example.com",)
 
-
-def is_allowed_url(url: str) -> bool:
+def is_private_ip(host: str) -> bool:
     """
-    Validate that URL is allowed.
+    Resolve hostname and check if it's private/internal.
+    """
+    try:
+        ip = socket.gethostbyname(host)
+        ip_obj = ipaddress.ip_address(ip)
 
-    Blocks:
-        - localhost
-        - internal IPs
-        - non-allowed domains
+        return (
+            ip_obj.is_private
+            or ip_obj.is_loopback
+            or ip_obj.is_link_local
+            or ip_obj.is_reserved
+        )
+    except Exception:
+        return True  # fail closed
+
+
+def validate_url(url: str) -> None:
+    """
+    Validate URL to prevent SSRF.
     """
     parsed = urlparse(url)
 
-    if parsed.hostname is None:
-        return False
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="URL not allowed")
 
-    if parsed.hostname in ("localhost", "127.0.0.1"):
-        return False
+    if not parsed.hostname:
+        raise HTTPException(status_code=400, detail="URL not allowed")
+
+    if is_private_ip(parsed.hostname):
+        raise HTTPException(status_code=400, detail="URL not allowed")
 
     if parsed.hostname not in ALLOWED_HOSTS:
-        return False
-
-    return True
+        raise HTTPException(status_code=400, detail="URL not allowed")
 
 
 @router.get("/fetch")
 async def fetch_url_secure(url: str) -> Any:
     """
-    Secure implementation of URL fetching.
+    [SECURE] SSRF-protected endpoint.
 
-    Prevents SSRF via:
-        - allowlist validation
-        - blocking internal addresses
-
-    OWASP:
-        A10:2021 - SSRF (Fixed)
+    - Blocks internal IPs
+    - Blocks localhost
+    - Allows only http/https
     """
 
-    if not is_allowed_url(url):
-        raise HTTPException(status_code=400, detail="URL not allowed")
+    validate_url(url)
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=5.0) as client:
         response = await client.get(url)
 
     return {

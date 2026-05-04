@@ -4,29 +4,23 @@ from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-# don't forget it is a lab :P
-DATABASE_URL: str = os.getenv("DATABASE_URL")
+
+def get_database_url() -> str:
+    """
+    Returns correct DB URL depending on environment.
+    """
+    return os.getenv("DATABASE_URL", "")
+
+
+DATABASE_URL = get_database_url()
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine,
-)
+SessionLocal = sessionmaker(bind=engine)
 
 
 def get_db() -> Generator[Session, None, None]:
-    """
-    Dependency that provides a database session.
-
-    Yields:
-        Session: SQLAlchemy database session.
-
-    Ensures:
-        Session is properly closed after use.
-    """
-    db: Session = SessionLocal()
+    db = SessionLocal()
     try:
         yield db
     finally:
